@@ -3,86 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Admin Pramuka</title>
+    <title>Absen Pramuka SDN 165</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 20px; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #343a40; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
-        th { background-color: #28a745; color: white; }
-        tr:hover { background-color: #f1f1f1; }
-        .no-data { text-align: center; color: #6c757d; margin-top: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #e9ecef; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; width: 350px; }
+        h2 { color: #343a40; margin-bottom: 5px; }
+        h3 { color: #6c757d; margin-top: 0; margin-bottom: 25px; font-weight: normal; }
+        select, input { margin-bottom: 15px; padding: 12px; width: 90%; border: 1px solid #ced4da; border-radius: 8px; font-size: 16px; }
+        button { padding: 12px 25px; background-color: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; }
+        button:hover { background-color: #218838; }
+        #status { margin-top: 20px; font-size: 16px; font-weight: bold; padding: 10px; border-radius: 8px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loading { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Data Kehadiran Pramuka</h2>
-    <h3>SDN 165 Tanjung Jabung Barat</h3>
-    
-    <table id="tabelAbsen">
-        <thead>
-            <tr>
-                <th>Waktu</th>
-                <th>Nama</th>
-                <th>NIS</th>
-            </tr>
-        </thead>
-        <tbody id="bodyTabel">
-            </tbody>
-    </table>
-    <p id="pesan" class="no-data">Menunggu data...</p>
-</div>
+    <div class="container">
+        <h2>Absen Pramuka</h2>
+        <h3>SDN 165 Tanjung Jabung Barat</h3>
+        
+        <div id="formContainer">
+            <select id="namaDropdown" onchange="isiNIS()">
+                <option value="">-- Pilih Nama Anda --</option>
+            </select>
+            <input type="text" id="nis" placeholder="NIS" readonly>
+            <button onclick="kirimDataManual()">HADIR</button>
+        </div>
+        
+        <p id="status"></p>
+    </div>
 
-<script type="module">
-    // Import fungsi Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // Konfigurasi Firebase (SAMA DENGAN INDEX.HTML)
-    const firebaseConfig = {
-        apiKey: "AIzaSyBXvJQVg04kXhermNswq1l8VdDMtBvtS68",
-        authDomain: "absensi-pramuka-sdn165.firebaseapp.com",
-        databaseURL: "https://absensi-pramuka-sdn165-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "absensi-pramuka-sdn165",
-        storageBucket: "absensi-pramuka-sdn165.firebasestorage.app",
-        messagingSenderId: "136259161218",
-        appId: "1:136259161218:web:395b6dd5241ce12298b89b",
-        measurementId: "G-0LVZ6C98ST"
-    };
+        // Konfigurasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXvJQVg04kXhermNswq1l8VdDMtBvtS68",
+            authDomain: "absensi-pramuka-sdn165.firebaseapp.com",
+            databaseURL: "https://absensi-pramuka-sdn165-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "absensi-pramuka-sdn165",
+            storageBucket: "absensi-pramuka-sdn165.firebasestorage.app",
+            messagingSenderId: "136259161218",
+            appId: "1:136259161218:web:395b6dd5241ce12298b89b",
+            measurementId: "G-0LVZ6C98ST"
+        };
 
-    // Inisialisasi
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const absenRef = ref(db, 'absensi');
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const statusLabel = document.getElementById('status');
+        const formContainer = document.getElementById('formContainer');
 
-    // Mendengarkan data secara real-time
-    onValue(absenRef, (snapshot) => {
-        const data = snapshot.val();
-        const bodyTabel = document.getElementById('bodyTabel');
-        const pesan = document.getElementById('pesan');
-        bodyTabel.innerHTML = ""; // Bersihkan tabel sebelum update
+        // --- FUNGSI MENGISI DROPDOWN (Manual) ---
+        const dropdown = document.getElementById('namaDropdown');
+        get(child(ref(db), 'anggota_perpus')).then((snapshot) => {
+            if (snapshot.exists()) {
+                const dataSiswa = snapshot.val();
+                window.siswaData = dataSiswa; // Simpan untuk referensi
+                for (let id in dataSiswa) {
+                    let option = document.createElement('option');
+                    option.value = id;
+                    option.text = dataSiswa[id].nama;
+                    dropdown.add(option);
+                }
+            }
+        });
 
-        if (data) {
-            pesan.style.display = "none";
-            // Ubah objek data menjadi array agar bisa diurutkan (terbaru di atas)
-            const dataArray = Object.values(data).reverse();
-            
-            dataArray.forEach((siswa) => {
-                const row = `<tr>
-                    <td>${siswa.waktu}</td>
-                    <td>${siswa.nama}</td>
-                    <td>${siswa.nis}</td>
-                </tr>`;
-                bodyTabel.innerHTML += row;
-            });
-        } else {
-            pesan.style.display = "block";
-            pesan.innerText = "Belum ada data absen.";
+        window.isiNIS = function() {
+            const idSiswa = document.getElementById('namaDropdown').value;
+            document.getElementById('nis').value = idSiswa;
         }
-    });
-</script>
 
+        // --- LOGIKA SCAN BARCODE (Otomatis) ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const studentId = urlParams.get('id');
+
+        if (studentId) {
+            formContainer.style.display = "none"; // Sembunyikan form
+            statusLabel.innerText = "Memproses scan...";
+            statusLabel.className = "loading";
+            
+            get(child(ref(db), `anggota_perpus/${studentId}`)).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const nama = snapshot.val().nama;
+                    catatKehadiran(nama, studentId);
+                } else {
+                    statusLabel.innerText = "Siswa tidak ditemukan!";
+                    statusLabel.className = "error";
+                }
+            }).catch((error) => {
+                statusLabel.innerText = "Error: " + error.message;
+                statusLabel.className = "error";
+            });
+        }
+
+        // --- FUNGSI UTAMA CATAT KEHADIRAN ---
+        function catatKehadiran(nama, id) {
+            const dataRef = ref(db, 'absensi/' + Date.now());
+            set(dataRef, {
+                nama: nama,
+                nis: id,
+                waktu: new Date().toLocaleString('id-ID')
+            }).then(() => {
+                statusLabel.innerText = "Berhasil Hadir: " + nama;
+                statusLabel.className = "success";
+            }).catch((error) => {
+                statusLabel.innerText = "Gagal mengirim data.";
+                statusLabel.className = "error";
+            });
+        }
+
+        // --- FUNGSI KIRIM MANUAL ---
+        window.kirimDataManual = function() {
+            const id = document.getElementById('nis').value;
+            const nama = dropdown.options[dropdown.selectedIndex].text;
+
+            if(id) {
+                catatKehadiran(nama, id);
+                formContainer.style.display = "none";
+            } else {
+                alert("Mohon pilih nama!");
+            }
+        }
+    </script>
 </body>
 </html>
