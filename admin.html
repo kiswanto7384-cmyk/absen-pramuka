@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin Pramuka</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #343a40; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
+        th { background-color: #28a745; color: white; }
+        tr:hover { background-color: #f1f1f1; }
+        .no-data { text-align: center; color: #6c757d; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Data Kehadiran Pramuka</h2>
+    <h3>SDN 165 Tanjung Jabung Barat</h3>
+    
+    <table id="tabelAbsen">
+        <thead>
+            <tr>
+                <th>Waktu</th>
+                <th>Nama</th>
+                <th>NIS</th>
+            </tr>
+        </thead>
+        <tbody id="bodyTabel">
+            </tbody>
+    </table>
+    <p id="pesan" class="no-data">Menunggu data...</p>
+</div>
+
+<script type="module">
+    // Import fungsi Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // Konfigurasi Firebase (SAMA DENGAN INDEX.HTML)
+    const firebaseConfig = {
+        apiKey: "AIzaSyBXvJQVg04kXhermNswq1l8VdDMtBvtS68",
+        authDomain: "absensi-pramuka-sdn165.firebaseapp.com",
+        databaseURL: "https://absensi-pramuka-sdn165-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "absensi-pramuka-sdn165",
+        storageBucket: "absensi-pramuka-sdn165.firebasestorage.app",
+        messagingSenderId: "136259161218",
+        appId: "1:136259161218:web:395b6dd5241ce12298b89b",
+        measurementId: "G-0LVZ6C98ST"
+    };
+
+    // Inisialisasi
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const absenRef = ref(db, 'absensi');
+
+    // Mendengarkan data secara real-time
+    onValue(absenRef, (snapshot) => {
+        const data = snapshot.val();
+        const bodyTabel = document.getElementById('bodyTabel');
+        const pesan = document.getElementById('pesan');
+        bodyTabel.innerHTML = ""; // Bersihkan tabel sebelum update
+
+        if (data) {
+            pesan.style.display = "none";
+            // Ubah objek data menjadi array agar bisa diurutkan (terbaru di atas)
+            const dataArray = Object.values(data).reverse();
+            
+            dataArray.forEach((siswa) => {
+                const row = `<tr>
+                    <td>${siswa.waktu}</td>
+                    <td>${siswa.nama}</td>
+                    <td>${siswa.nis}</td>
+                </tr>`;
+                bodyTabel.innerHTML += row;
+            });
+        } else {
+            pesan.style.display = "block";
+            pesan.innerText = "Belum ada data absen.";
+        }
+    });
+</script>
+
+</body>
+</html>
